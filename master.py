@@ -57,6 +57,9 @@ def close_listening_socket_at_exit():
 
 
 def try_bind_port(sock, addr):
+    if hasattr(socket, "SO_REUSEADDR"):
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
     while True:
         try:
             sock.bind(addr)
@@ -149,8 +152,12 @@ class Master(object):
         self.thread_pool["assign_slaver_daemon"].start()
         self.thread_pool["socket_bridge"] = self.socket_bridge.start_as_daemon()
 
-        while True:
-            time.sleep(10)
+        try:
+            while True:
+                time.sleep(10)
+        except KeyboardInterrupt:
+            log.info("KeyboardInterrupt received, shutting down listening sockets")
+            close_listening_socket_at_exit()
 
     def _make_ssl_context(self):
         if ssl is None:
